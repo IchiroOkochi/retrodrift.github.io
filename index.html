@@ -72,34 +72,37 @@
       <span id="speed"            class="hud"><span id="speed_value" class="value">0</span> mph</span>
       <span id="current_lap_time" class="hud">Time: <span id="current_lap_time_value" class="value">0.0</span></span> 
       <span id="last_lap_time"    class="hud">Last Lap: <span id="last_lap_time_value" class="value">0.0</span></span>
-      <span id="fast_lap_time"    class="hud">Global Record: <span id="fast_lap_time_value" class="value">0.0</span></span>
+      <span id="fast_lap_time"    class="hud">Fastest Lap: <span id="fast_lap_time_value" class="value">0.0</span></span>
     </div>
-    
-    
     <div id="menu">
-      <div id="menuFastestLap" style="
-        margin-top: 20px;
-        color: white;
-        font-family: 'Courier New';
-        font-size: 20px;
-        background-color: rgba(0, 0, 0, 0.6);
-        padding: 10px 15px;
-        border-radius: 10px;
-        display: inline-block;">
-        Global Record: <span id="menuFastestLapValue">0.0</span>
-      </div>
-
 
 
 
   <!-- <h1>Retro Drift</h1> -->
+  
+
+  
   <button id="startButton" class="button-49">Start Game</button>
   <button id="tutorialButton" class="button-49">How to Play</button>
   <button id="restartButton" class="button-49" style="display: none;">Restart Game</button>
   <button id="resumeButton" class="button-49" style="display: none;">Resume Game</button>
-  
+  <div id="menuFastestLap" style="
+    margin-top: 30px;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: #00ffff;
+    font-family: 'Courier New', monospace;
+    font-size: 22px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    text-align: center;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 0 10px #00ffff80;
+  ">
+    🏁 Global Record: <span id="menuFastestLapValue">0.0</span>
+  </div>
 </div>
-
 <div id="fadeOverlay"></div>
 
 <div id="tutorialOverlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); color:white; z-index:11; padding:40px; font-family:'Courier New';">
@@ -151,12 +154,9 @@ Loading...
 
 
 
-
-
     var crashCount = 0;
     var maxCrashes = 3;
     var gameOver = false;
-    var gameWon = false;
     var keyRestart = false;
     var hasRestarted = false;
     var engineSound;
@@ -243,15 +243,14 @@ Loading...
     //=========================================================================
 
     function update(dt) {
-      if (!gameStarted && !gameWon) return;
+      if (!gameStarted) return;
       if (gameStarted && keyMenu) {
         gameStarted = false;
-        gameWon = false;
         Dom.get('menu').style.display = 'flex';
         Dom.set('menuFastestLapValue', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
 
-        // Dom.set('menuFastestLapValue', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
 
+        // Hide start, show resume + restart
         Dom.get('startButton').style.display = 'none';
         Dom.get('resumeButton').style.display = 'inline-block';
         Dom.get('restartButton').style.display = 'inline-block';
@@ -270,17 +269,15 @@ Loading...
 
 
       
-      if ((gameOver || gameWon) && keyRestart && !hasRestarted) {
+      if (gameOver && keyRestart && !hasRestarted) {
         crashCount = 0;
         gameOver = false;
-        gameWon = false;
         position = 0;
         playerX = 0;
         speed = 0;
         currentLapTime = 0;
         lastLapTime = null;
         hasRestarted = true;
-        gameStarted = true;
         resetRoad();
         console.log("Game restarted");
         return;
@@ -290,7 +287,6 @@ Loading...
         hasRestarted = false;
       }
 
-      if (gameWon) return;
       if (gameOver) {
         if (bgMusic && !bgMusic.paused) bgMusic.pause();
         if (engineSound && !engineSound.paused) engineSound.pause();
@@ -379,16 +375,10 @@ Loading...
         if (currentLapTime && (startPosition < playerZ)) {
           lastLapTime    = currentLapTime;
           currentLapTime = 0;
-
-          gameWon = true;
-          gameStarted = false;
-          bgMusic.pause();
-          engineSound.pause();
-          return;
           if (lastLapTime <= Util.toFloat(Dom.storage.fast_lap_time)) {
             Dom.storage.fast_lap_time = lastLapTime;
             updateHud('fast_lap_time', formatTime(lastLapTime));
-            
+            Dom.set('menuFastestLapValue', formatTime(lastLapTime));
             Dom.addClassName('fast_lap_time', 'fastest');
             Dom.addClassName('last_lap_time', 'fastest');
           }
@@ -507,7 +497,7 @@ Loading...
     //=========================================================================
 
     function render() {
-      if (!gameStarted && !gameWon) return;
+      if (!gameStarted) return;
 
 
       var baseSegment   = findSegment(position);
@@ -602,20 +592,6 @@ Loading...
         ctx.fillText('Press M to return to Menu', width / 2, height / 2 + 110); // 👈 This line
 
       }
-      if (gameWon) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, width, height);
-
-        ctx.fillStyle = 'white';
-        ctx.font = 'bold 60px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText('YOU WIN!', width / 2, height / 2 - 30);
-
-        ctx.font = '24px Arial';
-        ctx.fillText('Press R to Restart', width / 2, height / 2 + 70);
-        ctx.fillText('Press M to return to Menu', width / 2, height / 2 + 110);
-      }
-
 
 
     }
@@ -849,14 +825,7 @@ Loading...
         reset();
         Dom.storage.fast_lap_time = Dom.storage.fast_lap_time || 180;
         updateHud('fast_lap_time', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
-        const fastLap = Util.toFloat(Dom.storage.fast_lap_time) || 180;
-        Dom.set('menuFastestLapValue', formatTime(fastLap));
-
-        // Dom.set('menuFastestLapValue', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
-
-        // Dom.set('menuFastestLapValue', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
-
-        // updateHud('fast_lap_time', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
+        Dom.set('menuFastestLapValue', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
 
 
         bgMusic = Dom.get('music');
@@ -888,8 +857,6 @@ Loading...
       const fade = Dom.get('fadeOverlay');
       fade.style.opacity = '1';
       fade.style.pointerEvents = 'auto';
-      Dom.set('menuFastestLapValue', formatTime(Util.toFloat(Dom.storage.fast_lap_time)));
-
 
       setTimeout(() => {
         fade.style.opacity = '0';
@@ -932,7 +899,6 @@ Loading...
         // reset game state
         crashCount = 0;
         gameOver = false;
-        gameWon = false;
         position = 0;
         playerX = 0;
         speed = 0;
@@ -1005,12 +971,6 @@ Loading...
     // }
 
     //=========================================================================
-
-    window.addEventListener("DOMContentLoaded", () => {
-      const fastLap = Util.toFloat(localStorage.getItem("fast_lap_time")) || 180;
-      document.getElementById("menuFastestLapValue").textContent = formatTime(fastLap);
-    });
-
 
   </script>
 
